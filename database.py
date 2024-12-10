@@ -1,78 +1,42 @@
 import sqlite3
-from sqlite3 import Error
+from datetime import datetime
 
-DATABASE_FILE = 'schedule.db'
+DATABASE_NAME = 'tasks.db'
 
-def create_connection():
-    conn = None
-    try:
-        conn = sqlite3.connect(DATABASE_FILE)
-        return conn
-    except Error as e:
-        print(e)
+bd = {}
+
+def db_connect():
+    conn = sqlite3.connect(DATABASE_NAME)
     return conn
 
 def create_table():
-    conn = create_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    chat_id INTEGER NOT NULL,
-                    day TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    event_time TEXT NOT NULL
-                )
-            ''')
-            conn.commit()
-        except Error as e:
-            print(e)
-        finally:
-            conn.close()
+    conn = db_connect()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER,
+            description TEXT,
+            event_time TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-def add_event(chat_id, day, description, event_time):
-    conn = create_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO events (chat_id, day, description, event_time)
-                VALUES (?, ?, ?, ?)
-            ''', (chat_id, day, description, event_time.strftime('%Y-%m-%d %H:%M')))
-            conn.commit()
-        except Error as e:
-            print(e)
-        finally:
-            conn.close()
+def add_task(chat_id, description, event_time):
+    conn = db_connect()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO tasks (chat_id, description, event_time) VALUES (?, ?, ?)',
+                   (chat_id, description, event_time.isoformat()))
+    conn.commit()
+    conn.close()
 
-def get_events(chat_id):
-    conn = create_connection()
-    events = []
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('SELECT day, description, event_time FROM events WHERE chat_id = ?', (chat_id,))
-            events = cursor.fetchall()
-        except Error as e:
-            print(e)
-        finally:
-            conn.close()
-    return events
+def get_tasks(chat_id):
+    conn = db_connect()
+    cursor = conn.cursor()
+    cursor.execute('SELECT description, event_time FROM tasks WHERE chat_id = ?', (chat_id,))
+    tasks = cursor.fetchall()
+    conn.close()
+    return tasks
 
-def delete_event(event_id):
-    conn = create_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM events WHERE id = ?', (event_id,))
-            conn.commit()
-        except Error as e:
-            print(e)
-        finally:
-            conn.close()
-
-
-create_table()
 
