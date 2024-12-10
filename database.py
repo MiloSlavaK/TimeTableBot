@@ -3,7 +3,7 @@ from datetime import datetime
 
 DATABASE_NAME = 'tasks.db'
 
-bd = {}
+
 
 def db_connect():
     conn = sqlite3.connect(DATABASE_NAME)
@@ -39,4 +39,4 @@ def get_tasks(chat_id):
     conn.close()
     return tasks
 
-
+bd = {}
