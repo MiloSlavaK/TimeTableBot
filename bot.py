@@ -1,5 +1,4 @@
 import asyncio
-import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -8,13 +7,16 @@ from aiogram.utils import executor
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from datetime import datetime, timedelta
 import logging
+import os
 from dotenv import load_dotenv
+from database import bd
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 
 API_TOKEN = TOKEN
+
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +33,7 @@ class Form(StatesGroup):
     waiting_for_event_description = State()
 
 # Хранение расписания пользователей
-user_schedule = {}
+data_base = bd
 
 async def notify_user(chat_id, event):
     try:
@@ -42,7 +44,7 @@ async def notify_user(chat_id, event):
 async def schedule_notifications():
     while True:
         now = datetime.now().strftime("%H:%M")
-        for chat_id, events in user_schedule.items():
+        for chat_id, events in data_base.items():
             for day, description, event_time in events:
                 if event_time.strftime("%H:%M") == now:
                     await notify_user(chat_id, description)
@@ -99,10 +101,10 @@ async def save_event(message: types.Message, state: FSMContext):
     chat_id = message.chat.id
 
     # Сохраняем событие
-    if chat_id not in user_schedule:
-        user_schedule[chat_id] = []
+    if chat_id not in data_base:
+        data_base[chat_id] = []
 
-    user_schedule[chat_id].append((day, event_description, event_time))
+    data_base[chat_id].append((day, event_description, event_time))
 
     # Запланируем уведомление за 10 минут до события
     notify_time = event_time - timedelta(minutes=10)
@@ -112,6 +114,7 @@ async def save_event(message: types.Message, state: FSMContext):
 
     await message.answer(f"Событие '{event_description}' на {day} в {event_time.strftime('%H:%M')} сохранено!")
     await state.finish()
+
 
 async def schedule_event_notification(chat_id, notify_time, event_description):
     while True:
@@ -123,9 +126,9 @@ async def schedule_event_notification(chat_id, notify_time, event_description):
 @dp.message_handler(filters.Text(equals="Просмотреть задачи"))
 async def view_tasks(message: types.Message):
     chat_id = message.chat.id
-    if chat_id in user_schedule and user_schedule[chat_id]:
+    if chat_id in data_base and data_base[chat_id]:
         tasks_list = "\n".join([f"{day}: {description} в {event_time.strftime('%H:%M')}"
-                                 for day, description, event_time in user_schedule[chat_id]])
+                                for day, description, event_time in data_base[chat_id]])
         await message.answer(f"Ваши сохраненные задачи:\n{tasks_list}")
     else:
         await message.answer("У вас нет сохраненных задач.")
@@ -134,4 +137,3 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.create_task(schedule_notifications())  # Запуск фоновой задачи для уведомлений
     executor.start_polling(dp, skip_updates=True)
-
