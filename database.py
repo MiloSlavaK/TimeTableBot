@@ -26,7 +26,7 @@ def create_table():
 def add_task(chat_id, description, event_time):
     conn = db_connect()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO tasks (chat_id, description, event_time) VALUES (?, ?, ?)',
+    cursor.execute('INSERT INTO tasks (chat_id, description, event_time) VALUES ()',
                    (chat_id, description, event_time.isoformat()))
     conn.commit()
     conn.close()
